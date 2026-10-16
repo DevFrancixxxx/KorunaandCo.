@@ -7,7 +7,7 @@ import { cloudConfigured, readCloudSnapshot, writeCloudSnapshot } from './cloud.
 import { AuthLoading, Login } from './components/Login.jsx';
 import { Register } from './components/Register.jsx';
 import { AccountMenu } from './components/AccountMenu.jsx';
-import { demoCredentials, getCurrentSession, getInitialSession, registerAccount, signIn, signOut, watchAuthState } from './services/auth.js';
+import { clearEmailConfirmationReturn, demoCredentials, getCurrentSession, getInitialSession, isEmailConfirmationReturn, registerAccount, signIn, signOut, verifyRegistrationCode, watchAuthState } from './services/auth.js';
 
 const nav = [
  ['Overview',Home],['Roadmap',CheckSquare],['Tasks',ClipboardList],['Calendar',CalendarDays],
@@ -94,14 +94,31 @@ function App(){
  };
  useEffect(()=>{
   if(!cloudConfigured)return;
-  getCurrentSession().then(setSession).catch(error=>setCloudMessage(error.message)).finally(()=>setAuthReady(true));
-  return watchAuthState((next,event)=>{
+  let active=true;
+  const confirmationReturn=isEmailConfirmationReturn();
+  const initializeAuth=async()=>{
+   try{
+    const next=await getCurrentSession();
+    if(confirmationReturn){
+     if(next)await signOut();
+     if(!active)return;
+     clearEmailConfirmationReturn();
+     setSession(null);
+     setAuthView('login');
+    }else if(active)setSession(next);
+   }catch(error){if(active)setCloudMessage(error.message)}
+   finally{if(active)setAuthReady(true)}
+  };
+  initializeAuth();
+  const stopWatching=watchAuthState((next,event)=>{
+   if(!active)return;
    setSession(next);
    if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_UPDATED'){
     setCloudReady(false);
     setSharedAccess(false);
    }
   });
+  return ()=>{active=false;stopWatching()};
  },[]);
  useEffect(()=>{if(cloudConfigured&&session)loadCloud()},[session?.user?.id]);
 
@@ -178,7 +195,7 @@ function App(){
  const allMilestones=tasks.filter(t=>t.type==='Milestone');
  const navTo=p=>{setPage(p);setMenu(false)};
  if(!authReady)return <AuthLoading message="Checking secure session…"/>;
- if(!session&&authView==='register')return <Register cloudMode={cloudConfigured} onRegister={registerAccount} onBackToLogin={()=>setAuthView('login')}/>;
+ if(!session&&authView==='register')return <Register cloudMode={cloudConfigured} onRegister={registerAccount} onVerifyCode={verifyRegistrationCode} onBackToLogin={()=>setAuthView('login')}/>;
  if(!session)return <Login cloudMode={cloudConfigured} demoCredentials={demoCredentials} onSignIn={handleLogin} onRegister={()=>setAuthView('register')}/>;
  return <div className="app">
   <aside className={`sidebar ${menu?'open':''}`}>

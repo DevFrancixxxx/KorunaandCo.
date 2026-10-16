@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronRight, Eye, EyeOff, LockKeyhole, Mail, UserRound, UserPlus } from 'lucide-react';
 
-export function Register({cloudMode,onRegister,onBackToLogin}){
+export function Register({cloudMode,onRegister,onVerifyCode,onBackToLogin}){
  const [fullName,setFullName]=useState('');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -10,6 +10,7 @@ export function Register({cloudMode,onRegister,onBackToLogin}){
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(false);
  const [result,setResult]=useState(null);
+ const [confirmationCode,setConfirmationCode]=useState('');
 
  const submit=async event=>{
   event.preventDefault();
@@ -17,14 +18,31 @@ export function Register({cloudMode,onRegister,onBackToLogin}){
   if(password!==confirmPassword){setError('Passwords do not match.');return;}
   if(password.length<8){setError('Password must contain at least 8 characters.');return;}
   setLoading(true);
-  try{setResult(await onRegister({fullName,email,password}));}
+  try{
+   const registrationResult=await onRegister({fullName,email,password});
+   if(registrationResult.confirmationRequired)setResult(registrationResult);
+   else onBackToLogin();
+  }
   catch(registrationError){setError(registrationError.message||'Unable to create your account.');}
+  finally{setLoading(false);}
+ };
+
+ const confirmEmail=async event=>{
+  event.preventDefault();
+  setError('');
+  if(!/^\d{8}$/.test(confirmationCode)){setError('Enter the 8-digit code from your email.');return;}
+  setLoading(true);
+  try{
+   await onVerifyCode(result.email,confirmationCode);
+   onBackToLogin();
+  }
+  catch(verificationError){setError(verificationError.message||'That confirmation code is invalid or has expired.');}
   finally{setLoading(false);}
  };
 
  if(result)return <div className="login-page">
   <section className="login-intro"><div className="login-brand"><span className="login-mark">KC</span><span>KORUNA &amp; CO</span></div><div><span className="login-kicker">Account created</span><h1>One final step before you sign in.</h1><p>Your account has been created securely through Supabase Authentication.</p></div><div className="login-proof"><span><CheckCircle2 size={16}/> Email verification</span><span><LockKeyhole size={16}/> Admin-approved access</span></div></section>
-  <section className="login-panel"><div className="login-card registration-success"><span className="success-icon"><CheckCircle2 size={28}/></span><h2>{result.confirmationRequired?'Check your email':'Registration complete'}</h2><p>{result.confirmationRequired?`We sent a confirmation link to ${result.email}. Confirm your email before signing in.`:`Your account for ${result.email} is ready.`}</p><div className="approval-note"><b>Dashboard approval required</b><span>An administrator must add your account to the project before shared data becomes available.</span></div><button className="login-submit" onClick={onBackToLogin}>Return to sign in <ChevronRight size={17}/></button></div></section>
+  <section className="login-panel"><div className="login-card registration-success"><span className="success-icon"><Mail size={28}/></span><h2>Check your email</h2><p>Enter the 8-digit confirmation code sent to {result.email}.</p><form className="login-form" onSubmit={confirmEmail}><label htmlFor="confirmation-code">Confirmation code</label><div className="login-input"><LockKeyhole size={18}/><input id="confirmation-code" type="text" inputMode="numeric" autoComplete="one-time-code" required minLength="8" maxLength="8" pattern="[0-9]{8}" value={confirmationCode} onChange={event=>setConfirmationCode(event.target.value.replace(/\D/g,'').slice(0,8))} placeholder="00000000"/></div>{error&&<div className="login-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}<button className="login-submit" disabled={loading}>{loading?'Confirmingâ€¦':<>Confirm email <ChevronRight size={17}/></>}</button></form><div className="approval-note"><b>Dashboard approval required</b><span>An administrator must add your account to the project before shared data becomes available.</span></div><button className="auth-back" onClick={onBackToLogin}><ArrowLeft size={16}/> Return to sign in</button></div></section>
  </div>;
 
  return <div className="login-page">

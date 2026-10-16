@@ -7,8 +7,9 @@ The dashboard uses Supabase Auth for email/password login and Postgres for profi
 1. Create a Supabase project.
 2. In Authentication > Providers > Email, keep email/password enabled and turn on **Allow new users to sign up**.
 3. Keep **Confirm Email** enabled so newly registered users must verify their address.
-4. In Authentication > URL Configuration, set the Site URL and add your local/deployed app URLs to Redirect URLs.
-5. Apply both files in `supabase/migrations` in filename order using either the SQL Editor or the Supabase CLI.
+4. In Authentication > URL Configuration, set the Site URL to the deployed app and add both the local and deployed app URLs to Redirect URLs.
+5. In Authentication > Email Templates > Confirm signup, replace the confirmation-link content with a code using `{{ .Token }}`. For example: `Your confirmation code is: {{ .Token }}`.
+6. Apply both files in `supabase/migrations` in filename order using either the SQL Editor or the Supabase CLI.
 
 With the CLI:
 
@@ -43,9 +44,12 @@ Copy `.env.example` to `.env.local`, then replace the placeholders with the Proj
 ```dotenv
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key
+VITE_PUBLIC_APP_URL=https://your-deployed-app.example.com/
 ```
 
 Only use a publishable key in this browser app. Never expose a secret or `service_role` key.
+
+`VITE_PUBLIC_APP_URL` is retained as a safe fallback for confirmation-link templates. The configured email template sends an eight-digit code, which the user enters in the registration screen. After successful verification, the app signs out the temporary verification session and shows the login form.
 
 Restart `npm run dev` after changing environment variables. The login form will automatically switch from local demo mode to Supabase authentication.
 

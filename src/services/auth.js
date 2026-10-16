@@ -1,6 +1,7 @@
 import { cloudClient, cloudConfigured } from '../cloud.js';
 
 const localAuthKey = 'kc-demo-auth-v1';
+const emailConfirmedParam = 'email-confirmed';
 
 export const demoCredentials = {
  email: 'demo@koruna.co',
@@ -41,17 +42,43 @@ export async function signIn(email,password){
 
 export async function registerAccount({fullName,email,password}){
  if(!cloudConfigured)throw new Error('Connect this app to Supabase before creating accounts.');
+ const confirmationUrl=new URL(import.meta.env.VITE_PUBLIC_APP_URL?.trim()||window.location.href);
+ confirmationUrl.search='';
+ confirmationUrl.hash='';
+ confirmationUrl.searchParams.set(emailConfirmedParam,'1');
  const {data,error}=await cloudClient.auth.signUp({
   email:email.trim(),
   password,
   options:{
    data:{full_name:fullName.trim()},
-   emailRedirectTo:window.location.origin
+   emailRedirectTo:confirmationUrl.toString()
   }
  });
  if(error)throw error;
  if(data.session)await cloudClient.auth.signOut();
  return {email:email.trim(),confirmationRequired:!data.session};
+}
+
+export async function verifyRegistrationCode(email,code){
+ if(!cloudConfigured)throw new Error('Connect this app to Supabase before confirming accounts.');
+ const {data,error}=await cloudClient.auth.verifyOtp({
+  email:email.trim(),
+  token:code.trim(),
+  type:'signup'
+ });
+ if(error)throw error;
+ if(data.session)await cloudClient.auth.signOut();
+ return true;
+}
+
+export function isEmailConfirmationReturn(){
+ return new URLSearchParams(window.location.search).get(emailConfirmedParam)==='1';
+}
+
+export function clearEmailConfirmationReturn(){
+ const url=new URL(window.location.href);
+ url.searchParams.delete(emailConfirmedParam);
+ window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
 }
 
 export async function signOut(){
