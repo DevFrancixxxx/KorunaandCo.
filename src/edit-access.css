@@ -1,0 +1,20 @@
+.edit-access {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: fit-content;
+  margin: 0 2px 8px auto;
+  padding: 6px 10px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.edit-access span { font-weight: 700; }
+.edit-access small { font-size: 10px; }
+.edit-access.can-edit { color: #277a5f; background: #edf9f3; border-color: #bee4d1; }
+.edit-access.read-only { color: #88631d; background: #fff8e8; border-color: #ead8a9; }
+
+@media (max-width: 720px) {
+  .edit-access { width: 100%; margin: 0 0 8px; flex-wrap: wrap; border-radius: 8px; }
+}

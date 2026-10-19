@@ -1,0 +1,32 @@
+.save-progress-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #17112633;
+  backdrop-filter: blur(2px);
+}
+
+.save-progress-modal {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: min(340px, 100%);
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e3dff0;
+  border-radius: 12px;
+  box-shadow: 0 18px 55px #211a3430;
+}
+
+.save-progress-spinner { color: #514184; animation: save-progress-spin .8s linear infinite; }
+.save-progress-modal strong { display: block; font-size: 14px; color: #2d245c; }
+.save-progress-modal p { margin: 4px 0 0; color: #777284; font-size: 11px; }
+
+@keyframes save-progress-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .save-progress-spinner { animation-duration: .01ms; animation-iteration-count: 1; }
+}

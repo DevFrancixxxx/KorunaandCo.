@@ -2,6 +2,7 @@ import { cloudClient, cloudConfigured } from '../cloud.js';
 
 const localAuthKey = 'kc-demo-auth-v1';
 const emailConfirmedParam = 'email-confirmed';
+const passwordRecoveryParam = 'reset-password';
 
 export const demoCredentials = {
  email: 'demo@koruna.co',
@@ -71,6 +72,26 @@ export async function verifyRegistrationCode(email,code){
  return true;
 }
 
+function passwordRecoveryUrl(){
+ const recoveryUrl=new URL(import.meta.env.VITE_PUBLIC_APP_URL?.trim()||window.location.href);
+ recoveryUrl.search='';
+ recoveryUrl.hash='';
+ recoveryUrl.searchParams.set(passwordRecoveryParam,'1');
+ return recoveryUrl.toString();
+}
+
+export async function requestPasswordReset(email){
+ if(!cloudConfigured)throw new Error('Password reset is available when this app is connected to Supabase.');
+ const {error}=await cloudClient.auth.resetPasswordForEmail(email.trim(),{redirectTo:passwordRecoveryUrl()});
+ if(error)throw error;
+}
+
+export async function resetPassword(password){
+ if(!cloudConfigured)throw new Error('Password reset is available when this app is connected to Supabase.');
+ const {error}=await cloudClient.auth.updateUser({password});
+ if(error)throw error;
+}
+
 export function isEmailConfirmationReturn(){
  return new URLSearchParams(window.location.search).get(emailConfirmedParam)==='1';
 }
@@ -78,6 +99,16 @@ export function isEmailConfirmationReturn(){
 export function clearEmailConfirmationReturn(){
  const url=new URL(window.location.href);
  url.searchParams.delete(emailConfirmedParam);
+ window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
+}
+
+export function isPasswordRecoveryReturn(){
+ return new URLSearchParams(window.location.search).get(passwordRecoveryParam)==='1';
+}
+
+export function clearPasswordRecoveryReturn(){
+ const url=new URL(window.location.href);
+ url.searchParams.delete(passwordRecoveryParam);
  window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
 }
 

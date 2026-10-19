@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronRight, Eye, EyeOff, LockKeyhole, LogIn, Mail } from 'lucide-react';
 
-export function Login({cloudMode,demoCredentials,onSignIn,onRegister}){
+export function Login({cloudMode,demoCredentials,onSignIn,onRegister,onForgotPassword}){
  const [email,setEmail]=useState(cloudMode?'':demoCredentials.email);
  const [password,setPassword]=useState(cloudMode?'':demoCredentials.password);
  const [error,setError]=useState('');
@@ -24,7 +24,7 @@ export function Login({cloudMode,demoCredentials,onSignIn,onRegister}){
    <label htmlFor="login-password">Password</label><div className="login-input"><LockKeyhole size={18}/><input id="login-password" type={showPassword?'text':'password'} autoComplete="current-password" required minLength="8" value={password} onChange={event=>setPassword(event.target.value)} placeholder="Enter your password"/><button type="button" className="password-toggle" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div>
    {error&&<div className="login-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}
    <button className="login-submit" disabled={loading}>{loading?'Signing in…':<>Sign in <ChevronRight size={17}/></>}</button>
-  </form><div className="auth-switch"><span>Need an account?</span><button type="button" onClick={onRegister}>Create account</button></div>{!cloudMode&&<div className="demo-access"><b>Demo access</b><span>{demoCredentials.email}</span><span>{demoCredentials.password}</span></div>}<p className="login-note">{cloudMode?'Only approved Supabase accounts can access this workspace.':'Local prototype access. Do not use real company credentials.'}</p></div>
+  </form><div className="auth-switch"><button type="button" onClick={onForgotPassword}>Forgot password?</button><span aria-hidden="true">·</span><span>Need an account?</span><button type="button" onClick={onRegister}>Create account</button></div>{!cloudMode&&<div className="demo-access"><b>Demo access</b><span>{demoCredentials.email}</span><span>{demoCredentials.password}</span></div>}<p className="login-note">{cloudMode?'Only approved Supabase accounts can access this workspace.':'Local prototype access. Do not use real company credentials.'}</p></div>
   </section>
   {loading&&<div className="auth-loading-overlay" role="dialog" aria-modal="true" aria-labelledby="signing-in-title"><div className="auth-loading-modal"><span className="auth-spinner" aria-hidden="true"/><h3 id="signing-in-title">Signing you in</h3><p>Preparing your dashboard…</p></div></div>}
  </div>;
