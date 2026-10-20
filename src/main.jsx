@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Home, CheckSquare, CalendarDays, Users, GraduationCap, FileText, BarChart3, Settings, Search, Bell, ChevronRight, ChevronLeft, AlertTriangle, Flag, Circle, CheckCircle2, Clock3, LayoutGrid, List, Menu, Download, RotateCcw, Save, X, ClipboardList } from 'lucide-react';
+import { Home, CheckSquare, CalendarDays, Users, GraduationCap, FileText, BarChart3, Settings, Search, Bell, ChevronRight, ChevronLeft, AlertTriangle, Flag, Circle, CheckCircle2, Clock3, LayoutGrid, List, Menu, RotateCcw, Save, X, Trash2, ClipboardList } from 'lucide-react';
 import bundledData from './data.json';
 import './style.css';
 import './edit-access.css';
@@ -13,6 +13,7 @@ import { AccountMenu } from './components/AccountMenu.jsx';
 import { SaveProgressModal } from './components/SaveProgressModal.jsx';
 import { AddTaskModal } from './components/AddTaskModal.jsx';
 import { TaskCreatedModal } from './components/TaskCreatedModal.jsx';
+import { DeleteTaskModal } from './components/DeleteTaskModal.jsx';
 import { clearEmailConfirmationReturn, clearPasswordRecoveryReturn, demoCredentials, getCurrentSession, getInitialSession, isEmailConfirmationReturn, isPasswordRecoveryReturn, registerAccount, requestPasswordReset, resetPassword, signIn, signOut, verifyRegistrationCode, watchAuthState } from './services/auth.js';
 
 const nav = [
@@ -86,9 +87,11 @@ function App(){
  const [cloudVersion,setCloudVersion]=useState(0);
  const [cloudMessage,setCloudMessage]=useState(cloudConfigured?'Connecting to shared data…':'');
  const [cloudSaving,setCloudSaving]=useState(false);
+ const [taskSubmitting,setTaskSubmitting]=useState(false);
  const [saveBlocked,setSaveBlocked]=useState(false);
  const [createdTaskName,setCreatedTaskName]=useState('');
  const [userRole,setUserRole]=useState(cloudConfigured?'checking':'local');
+ const canEdit=!cloudConfigured||userRole==='admin'||userRole==='editor';
  const cloudVersionRef=React.useRef(0);
  const lastSavedRef=React.useRef(null);
  const remoteDirtyRef=React.useRef(false);
@@ -189,6 +192,7 @@ function App(){
  const sourceData={...roadmap,milestones:tasks.filter(t=>t.type==='Milestone').map(t=>({title:t.step,date:t.plannedEnd}))};
  const [page,setPage] = useState(()=>{const saved=localStorage.getItem(pageStorageKey);return nav.some(([label])=>label===saved)?saved:'Overview'});
  const [showAdd,setShowAdd] = useState(false);
+ const [taskPendingDeletion,setTaskPendingDeletion] = useState(null);
  const [query,setQuery] = useState('');
  const [filter,setFilter] = useState('All');
  const [view,setView] = useState('Gantt');
@@ -218,7 +222,7 @@ function App(){
     setToast('');
     if(createdTask)setCreatedTaskName(createdTask.step);
    }catch(e){setSaveBlocked(true);setCloudMessage('SAVE FAILED: '+e.message+' — export a JSON backup before reloading');}
-   finally{setCloudSaving(false)}
+   finally{setCloudSaving(false);setTaskSubmitting(false)}
   },400);
   return ()=>clearTimeout(timer);
  },[tasks,roadmap,cloudReady,sharedAccess,cloudSaving,saveBlocked,session?.user?.id]);
@@ -231,9 +235,8 @@ function App(){
  const progress = taskRows.length?Math.round(done/taskRows.length*100):0;
  const target = roadmap.project?.targetCompletion;
  const remaining = Math.max(0,daysBetween(now,target));
- const addTaskFromModal=draft=>{const id='added-'+(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():Date.now());const row={...draft,id,type:'Task',origin:'Added in dashboard',sourceRow:null,roadmapTiming:roadmapTimingFromDates(draft.plannedStart,draft.plannedEnd),workDays:draft.plannedStart&&draft.plannedEnd?Math.max(1,daysBetween(draft.plannedStart,draft.plannedEnd)+1):null,weeks:sourceData.weeks.map(week=>({week:week.key,date:week.date,value:null,fill:draft.plannedStart&&draft.plannedEnd&&draft.plannedStart<=new Date(new Date(week.date+'T12:00:00').getTime()+6*86400000).toLocaleDateString('en-CA')&&draft.plannedEnd>=week.date?'planned':null}))};setTasks(old=>[...old,row]);setShowAdd(false);setPage('Tasks');setToast(cloudConfigured?'Task added. Saving to Supabase…':'Task added and saved in this browser');};
- const importJSON=(e)=>{const file=e.target.files?.[0];if(!file)return;file.text().then(raw=>{try{const data=JSON.parse(raw);if(!Array.isArray(data.rows)||!data.rows.every(r=>r&&typeof r.id==='string'&&typeof r.type==='string'))throw Error('Not a compatible dashboard backup');if(!confirm(`Restore ${data.rows.length} rows from this backup? This replaces the current project data, including shared data in cloud mode. Export your current backup first.`))return;setTasks(normalizeAddedTiming(data.rows));setToast('Backup imported successfully');}catch(err){setToast('Import failed: '+err.message);}finally{e.target.value='';}});};
- const update=(id,key,value)=>setTasks(old=>old.map(t=>{
+ const addTaskFromModal=draft=>{if(!canEdit){setShowAdd(false);return;}const id='added-'+(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():Date.now());const row={...draft,id,type:'Task',origin:'Added in dashboard',sourceRow:null,roadmapTiming:roadmapTimingFromDates(draft.plannedStart,draft.plannedEnd),workDays:draft.plannedStart&&draft.plannedEnd?Math.max(1,daysBetween(draft.plannedStart,draft.plannedEnd)+1):null,weeks:sourceData.weeks.map(week=>({week:week.key,date:week.date,value:null,fill:draft.plannedStart&&draft.plannedEnd&&draft.plannedStart<=new Date(new Date(week.date+'T12:00:00').getTime()+6*86400000).toLocaleDateString('en-CA')&&draft.plannedEnd>=week.date?'planned':null}))};setTasks(old=>[...old,row]);setShowAdd(false);setPage('Tasks');setToast('');if(cloudConfigured&&sharedAccess&&!saveBlocked)setTaskSubmitting(true);};
+ const update=(id,key,value)=>{if(!canEdit)return;setTasks(old=>old.map(t=>{
  if(t.id!==id)return t;
  const changed={...t,[key]:value};
   if(key==='plannedStart'||key==='plannedEnd'){
@@ -250,7 +253,19 @@ function App(){
    });
   }
   return changed;
- }));
+ }));};
+ const deleteTask=id=>{
+  if(!canEdit)return;
+  if(id){
+   const task=tasks.find(item=>item.id===id);
+   if(task)setTaskPendingDeletion(task);
+   return;
+  }
+  if(!taskPendingDeletion)return;
+  setTasks(old=>old.filter(item=>item.id!==taskPendingDeletion.id));
+  setTaskPendingDeletion(null);
+  setToast('');
+ };
  const refreshRoadmap=()=>{
   if(cloudConfigured){loadCloud();return;}
   try{
@@ -261,7 +276,6 @@ function App(){
    setToast('Roadmap refreshed');
   }catch{setToast('Could not refresh the saved roadmap data');}
  };
- const exportJSON=()=>{const blob=new Blob([JSON.stringify({...sourceData,rows:tasks},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='kc-roadmap-data-backup.json';a.click();URL.revokeObjectURL(a.href);};
  const filtered=useMemo(()=>orderTasks(tasks).filter(t=>`${t.phase} ${t.step||''} ${t.owner||''} ${t.status||''} ${t.notes||''}`.toLowerCase().includes(query.toLowerCase()) && (filter==='All'||t.status===filter)),[tasks,query,filter]);
  const phases = tasks.filter(t=>t.type==='Phase').map((phase,index)=>({name:phase.phase,label:String(index+1).padStart(2,'0'),start:phase.plannedStart,end:phase.plannedEnd}));
  const timeline = useMemo(()=>{
@@ -332,13 +346,13 @@ function App(){
    <div className="nav">{nav.map(([label,Icon])=><button key={label} className={page===label?'active':''} onClick={()=>navTo(label)}><Icon size={17}/><span>{label}</span></button>)}</div>
    <div className="sidebar-foot"><div>AI Workforce<br/>Transformation</div><ChevronRight size={18}/></div>
   </aside>
-  <main className="main">
+  <main className={`main ${canEdit?'':'read-only-mode'}`} onKeyDown={event=>{if(!canEdit&&['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName))event.preventDefault()}}>
    {showAdd&&<AddTaskModal phases={tasks.filter(task=>task.type==='Phase')} onClose={()=>setShowAdd(false)} onAdd={addTaskFromModal}/>}
+   {taskPendingDeletion&&<DeleteTaskModal taskName={taskPendingDeletion.step} onCancel={()=>setTaskPendingDeletion(null)} onConfirm={()=>deleteTask()}/>}
    {createdTaskName&&<TaskCreatedModal taskName={createdTaskName} onClose={()=>setCreatedTaskName('')}/>}
-   {cloudSaving&&<SaveProgressModal/>}
+   {(cloudSaving||taskSubmitting)&&<SaveProgressModal isCreating={taskSubmitting}/>}
    {cloudConfigured&&<div className={`edit-access ${userRole==='admin'||userRole==='editor'?'can-edit':'read-only'}`}><span>{userRole==='checking'?'Checking access…':userRole==='admin'||userRole==='editor'?'Editing enabled':'Read-only access'}</span><small>{userRole==='checking'?'':userRole==='admin'||userRole==='editor'?`Role: ${userRole}`:'Ask an admin to assign the editor role to save changes.'}</small></div>}
    <header className="topbar"><button className="mobile-menu" onClick={()=>setMenu(!menu)}><Menu/></button><div><h1>{page==='Overview'?'Project Roadmap':page}</h1><p>{roadmap.project?.project||'Project roadmap'}</p></div><div className="top-actions"><div className="search"><Search size={16}/><input placeholder="Search tasks, people or documents..." value={query} onChange={e=>setQuery(e.target.value)}/></div><button className="iconbutton" title="Notifications"><Bell size={18}/><i/></button><AccountMenu session={session} onSignOut={handleSignOut}/></div></header>
-   <div className={`cloud-banner ${cloudConfigured&&!sharedAccess?'cloud-fallback':''}`}><span>{cloudConfigured?(sharedAccess?`☁ Shared prototype · version ${cloudVersion} · ${cloudSaving?'Saving…':cloudMessage}`:`◌ ${cloudMessage}`):`Local demo session · ${session.user.email}`}</span><div>{cloudConfigured&&<button className="outline" onClick={loadCloud} disabled={cloudSaving}>Reload shared data</button>}</div></div>
    {page==='Overview'&&<div className="overview"><div className="stats">
     <div className="stat"><div className="ring" style={{'--pct':progress}}><span>{progress}%</span></div><div><b>{progress}%</b><small>Overall progress</small><em className="green">↑ Calculated from tasks</em></div></div>
     <div className="stat"><div className="stat-icon lavender"><List/></div><div><b>{taskRows.filter(t=>t.status==='In progress'||t.status==='Not started').length}</b><small>Active tasks</small><em>{inProgress} in progress</em></div></div>
@@ -352,7 +366,7 @@ function App(){
    <section className="panel"><div className="section-head"><h2>Upcoming Milestones</h2><button className="textbutton" onClick={()=>navTo('Roadmap')}>View all <ChevronRight size={14}/></button></div>{[...sourceData.milestones].map(m=><div className="milestone-row" key={m.title}><Flag size={15}/><span>{m.title}</span><time>{short(m.date)}</time></div>)}</section></div>
    <section className="panel schedule"><div className="section-head"><h2>{scheduleTitle}</h2><div className="arrow-group"><button aria-label={`Previous ${scheduleView.toLowerCase()}`} onClick={()=>shiftSchedule(-1)}><ChevronLeft size={15}/></button><button aria-label={`Next ${scheduleView.toLowerCase()}`} onClick={()=>shiftSchedule(1)}><ChevronRight size={15}/></button></div><span className="grow"/><button className="outline" onClick={()=>setScheduleDate(todayISO)}>Today</button><select aria-label="Schedule view" value={scheduleView} onChange={event=>setScheduleView(event.target.value)}><option value="Week">Week view</option><option value="Day">Day view</option></select></div><div className="calendar-grid" style={{'--schedule-columns':scheduleDays.length}}>{scheduleDays.map(day=>{const dayTasks=tasks.filter(task=>task.type==='Task'&&task.plannedStart<=day.date&&task.plannedEnd>=day.date&&task.status!=='Done').slice(0,4);return <div className="day" key={day.date}><b>{day.label}</b>{['09:00','11:00','14:00','16:00'].map((time,index)=><div className="event" key={time}><small>{time}</small><span className="event-dot"/><span>{dayTasks[index]?.step||'—'}</span></div>)}</div>})}</div></section>
    </div>}
-   {page==='Tasks'&&<section className="panel task-management"><div className="section-head"><div><h2>Task Management</h2><p className="subhead">Manage daily work and approvals · {taskRows.length} actionable steps ({taskRows.filter(t=>t.origin==='Added in dashboard').length} added)</p></div><div className="table-actions"><button className="outline" onClick={exportJSON}><Download size={14}/> Export JSON backup</button><label className="outline import-button">Import JSON backup<input type="file" accept=".json,.json_v2,application/json" onChange={importJSON} hidden/></label><button className="primary" onClick={()=>setShowAdd(true)}>+ Add Task</button></div></div><div className="task-summary"><span><b>{taskRows.filter(t=>t.status==='In progress').length}</b> In progress</span><span><b>{taskRows.filter(t=>t.status==='Awaiting review').length}</b> Awaiting review</span><span><b>{attention.length}</b> Need attention</span></div><div className="task-list-wrap"><table className="task-list"><thead><tr><th>Task</th><th>Phase</th><th>Owner</th><th>Reviewer</th><th>Status</th><th>Due date</th><th>Notes</th></tr></thead><tbody>{filtered.filter(t=>t.type==='Task'||t.type==='Milestone').map(t=><tr key={t.id}><td><strong>{t.step}</strong>{t.origin==='Added in dashboard'&&<small className="added-label">Added task</small>}</td><td>{t.phase}</td><td><input aria-label={'Owner for '+t.step} value={t.owner||''} onChange={e=>update(t.id,'owner',e.target.value)}/></td><td><input aria-label={'Reviewer for '+t.step} placeholder="—" value={t.reviewer||''} onChange={e=>update(t.id,'reviewer',e.target.value)}/></td><td><select aria-label={'Status for '+t.step} value={t.status||'Not started'} onChange={e=>update(t.id,'status',e.target.value)}>{statusOptions.map(x=><option key={x}>{x}</option>)}</select></td><td><input aria-label={'Due date for '+t.step} type="date" value={t.plannedEnd||''} onChange={e=>update(t.id,'plannedEnd',e.target.value)}/></td><td><textarea aria-label={'Notes for '+t.step} rows="2" value={t.notes||''} onChange={e=>update(t.id,'notes',e.target.value)}/></td></tr>)}</tbody></table></div><p className="table-foot">New tasks are labelled “Added task”. {cloudConfigured?'Shared prototype: edits sync to the database, but simultaneous edits may conflict; keep JSON backups.':'Changes save locally in this browser only; export a JSON backup regularly.'}</p></section>}
+   {page==='Tasks'&&<section className="panel task-management task-page"><div className="section-head"><div><h2>Task Management</h2><p className="subhead">Manage daily work and approvals · {taskRows.length} actionable steps ({taskRows.filter(t=>t.origin==='Added in dashboard').length} added)</p></div><div className="table-actions"><button className="primary" onClick={()=>setShowAdd(true)}>+ Add Task</button></div></div><div className="task-summary"><span><b>{taskRows.filter(t=>t.status==='In progress').length}</b> In progress</span><span><b>{taskRows.filter(t=>t.status==='Awaiting review').length}</b> Awaiting review</span><span><b>{attention.length}</b> Need attention</span></div><div className="task-list-wrap"><table className="task-list"><thead><tr><th>Task</th><th>Phase</th><th>Owner</th><th>Reviewer</th><th>Status</th><th>Due date</th><th>Notes</th><th aria-label="Actions"/></tr></thead><tbody>{filtered.filter(t=>t.type==='Task'||t.type==='Milestone').map(t=><tr key={t.id}><td><strong>{t.step}</strong>{t.origin==='Added in dashboard'&&<small className="added-label">Added task</small>}</td><td>{t.phase}</td><td><input aria-label={'Owner for '+t.step} value={t.owner||''} onChange={e=>update(t.id,'owner',e.target.value)}/></td><td><input aria-label={'Reviewer for '+t.step} placeholder="—" value={t.reviewer||''} onChange={e=>update(t.id,'reviewer',e.target.value)}/></td><td><select aria-label={'Status for '+t.step} value={t.status||'Not started'} onChange={e=>update(t.id,'status',e.target.value)}>{statusOptions.map(x=><option key={x}>{x}</option>)}</select></td><td><input aria-label={'Due date for '+t.step} type="date" value={t.plannedEnd||''} onChange={e=>update(t.id,'plannedEnd',e.target.value)}/></td><td><textarea aria-label={'Notes for '+t.step} rows="2" value={t.notes||''} onChange={e=>update(t.id,'notes',e.target.value)}/></td><td><button className="task-delete" type="button" onClick={()=>deleteTask(t.id)} aria-label={'Delete '+t.step} title="Delete task"><Trash2 size={15}/></button></td></tr>)}</tbody></table></div><p className="table-foot">Changes save automatically {cloudConfigured?'to the shared database.':'in this browser.'}</p></section>}
    {(page==='Roadmap')&&<section className="panel full-table roadmap-page"><div className="section-head"><div><h2>{page==='Roadmap'?'Roadmap & Gantt':'Task Register'}</h2><p className="subhead">Workbook source of truth · {taskRows.length} steps · 26 weekly columns</p></div><div className="table-actions"><select value={filter} onChange={e=>setFilter(e.target.value)}><option>All</option>{statusOptions.map(s=><option key={s}>{s}</option>)}</select><button className="outline" onClick={refreshRoadmap} disabled={cloudSaving}><RotateCcw size={14}/> Refresh</button></div></div><div className="legend">{sourceData.legend.filter(x=>x.label).map((x,i)=><span key={i}><i className={`legend-swatch sw${i}`}/>{x.label}</span>)}<span className="legend-note">Red end date = past due and not done.</span></div><div className="table-wrap"><table className="roadmap"><thead><tr>{sourceData.columns.map((c,i)=><th key={i} className={i<10?'sticky-col':''}>{c}</th>)}{sourceData.weeks.map((w,i)=><th className="weekhead" key={i}><b>{w.key}</b><small>{short(w.date)}</small></th>)}</tr></thead><tbody>{filtered.map(t=>{const phaseRow=t.type==='Phase';return <tr key={t.id} className={phaseRow?'phase-row':''}>{[t.phase,t.step,t.type,t.owner,t.roadmapTiming,t.plannedStart,t.plannedEnd,t.workDays,t.status,t.notes].map((val,i)=><td key={i} className={i===0?'phase-cell':i===9?'notes-cell':i===6&&t.status!=='Done'&&t.plannedEnd&&t.plannedEnd<now?'late-date':''}>{i===5||i===6? <input aria-label={`${t.step||t.phase} ${sourceData.columns[i]}`} type="date" value={val||''} onChange={e=>update(t.id,i===5?'plannedStart':'plannedEnd',e.target.value)}/>:i===3?<input aria-label="Owner" value={val||''} onChange={e=>update(t.id,'owner',e.target.value)}/>:i===8&& !phaseRow?<select className={`status-select ${String(val||'').toLowerCase().replaceAll(' ','-')}`} value={val||'Not started'} onChange={e=>update(t.id,'status',e.target.value)}>{statusOptions.map(s=><option key={s}>{s}</option>)}</select>:i===9?<textarea aria-label="Notes" rows="2" value={val||''} onChange={e=>update(t.id,'notes',e.target.value)}/>:i===4?<input aria-label="Roadmap timing" value={val||''} onChange={e=>update(t.id,'roadmapTiming',e.target.value)}/>:i===7?<span>{val??<span className='unconfirmed' title='Blank in source workbook'>Blank in workbook</span>}</span>:<span>{val??<span className='unconfirmed' title='Blank in source workbook'>Blank in workbook</span>}</span>}</td>)}{sourceData.weeks.map((w,i)=><td className="weekcell" key={i}><span className={t.weeks?.[i]?.fill?'weekbar':''} title={`${w.key} ${w.date}`}>{t.weeks?.[i]?.value||''}</span></td>)}</tr>})}</tbody></table></div><p className="table-foot">{cloudConfigured?'Edits sync to the shared database. Refresh to retrieve the latest saved version.':'Edits save automatically in this browser. Refresh restores the latest browser-saved version.'} Weekly columns retain the workbook's source values and are not recalculated when dates change.</p><div className="source-notes"><h3>Notes and points to confirm</h3><ul>{sourceData.notesAndPointsToConfirm.filter(x=>x.text&&x.text.startsWith('•')).map((x,i)=><li key={i}>{x.text}</li>)}</ul></div></section>}
    {!(page==='Overview'||page==='Roadmap'||page==='Tasks')&&<section className="panel placeholder"><div className="stat-icon lavender"><LayoutGrid/></div><h2>{page}</h2><p>This navigation section is scaffolded for future expansion. The live task data and editable roadmap are available in Roadmap and Tasks.</p><button className="primary" onClick={()=>navTo('Roadmap')}>Open Roadmap</button></section>}
    <footer>Demo Organisation · Sample Project <span>Fictional data only</span></footer>

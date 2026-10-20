@@ -414,3 +414,102 @@
   .roadmap-page .table-wrap { max-height: 62vh; }
   .roadmap-page .legend-note { margin-left: 0; }
 }
+
+/* Tasks workspace refresh */
+.task-page {
+  --task-ink: #28233c;
+  --task-muted: #777188;
+  --task-line: #e8e5ee;
+  padding: 20px;
+  border: 1px solid var(--task-line);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(42, 31, 79, .055);
+}
+
+.task-page .section-head { min-height: 44px; margin-bottom: 18px; }
+.task-page .section-head h2 { color: var(--task-ink); font-size: 18px; letter-spacing: -.4px; }
+.task-page .subhead { color: var(--task-muted); font-size: 11px; }
+.task-page .primary { border-radius: 9px; padding: 10px 15px; font-weight: 700; box-shadow: 0 7px 16px rgba(45, 36, 92, .18); }
+.task-page .primary:hover { background: #40357b; transform: translateY(-1px); }
+
+.task-page .task-summary { gap: 10px; margin: 0 0 18px; }
+.task-page .task-summary span {
+  flex: 1;
+  min-width: 150px;
+  padding: 13px 15px;
+  border: 1px solid #ebe8f1;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #fbfaff, #f5f3fc);
+  color: #696377;
+}
+
+.task-page .task-summary b { color: #4b3e91; font-size: 21px; }
+.task-page .task-summary span:last-child { background: linear-gradient(145deg, #fff8f7, #fff0f1); border-color: #f6dddd; }
+.task-page .task-summary span:last-child b { color: #c25360; }
+
+.task-page .task-list-wrap { border: 1px solid #e5e2eb; border-radius: 11px; max-height: calc(100vh - 310px); }
+.task-page .task-list { font-size: 11px; }
+.task-page .task-list th {
+  padding: 12px;
+  border-color: #e7e4ed;
+  background: #f6f4fa;
+  color: #595367;
+  font-size: 9px;
+  letter-spacing: .22px;
+  text-transform: uppercase;
+}
+
+.task-page .task-list td { padding: 11px 12px; border-color: #efedf3; color: #555061; }
+.task-page .task-list tbody tr:hover td { background: #faf9ff; }
+.task-page .task-list tbody tr:hover td:first-child { box-shadow: inset 3px 0 #7768ce; }
+.task-page .task-list td:first-child strong { color: #363047; }
+.task-page .task-list input,
+.task-page .task-list select,
+.task-page .task-list textarea { border-color: #e3dfeb; border-radius: 7px; background: #fff; }
+.task-page .task-list input:focus,
+.task-page .task-list select:focus,
+.task-page .task-list textarea:focus { border-color: #b9afe4; box-shadow: 0 0 0 3px rgba(108, 91, 196, .1); outline: 0; }
+.task-page .added-label { color: #6656b0; font-weight: 700; }
+.task-page .table-foot { margin: 12px 2px 0; color: var(--task-muted); }
+.task-page .task-list th:last-child,
+.task-page .task-list td:last-child { width: 48px; text-align: center; }
+.task-delete {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #b8525f;
+  cursor: pointer;
+}
+.task-delete:hover,
+.task-delete:focus-visible { background: #fff0f1; outline: 0; }
+
+/* Viewer accounts can inspect the roadmap but cannot make client-side edits. */
+.read-only-mode .task-page .primary,
+.read-only-mode .task-page .task-delete,
+.read-only-mode .roadmap-page .roadmap input,
+.read-only-mode .roadmap-page .roadmap select,
+.read-only-mode .roadmap-page .roadmap textarea,
+.read-only-mode .task-page .task-list input,
+.read-only-mode .task-page .task-list select,
+.read-only-mode .task-page .task-list textarea {
+  pointer-events: none;
+  opacity: .58;
+}
+
+.read-only-mode .roadmap-page .roadmap input,
+.read-only-mode .roadmap-page .roadmap select,
+.read-only-mode .roadmap-page .roadmap textarea,
+.read-only-mode .task-page .task-list input,
+.read-only-mode .task-page .task-list select,
+.read-only-mode .task-page .task-list textarea { background: #f5f3f7 !important; }
+
+.read-only-mode .task-page .section-head .primary { display: none; }
+
+@media (max-width: 720px) {
+  .task-page { padding: 14px; border-radius: 12px; }
+  .task-page .section-head { gap: 12px; }
+  .task-page .table-actions { width: 100%; margin-left: 0; }
+  .task-page .task-list-wrap { max-height: 62vh; }
+}

@@ -15,7 +15,7 @@ export function AddTaskModal({phases,onClose,onAdd}){
  };
  return <div className="add-task-backdrop" onClick={onClose}>
   <section className="add-task-modal" role="dialog" aria-modal="true" aria-labelledby="add-task-title" onClick={event=>event.stopPropagation()}>
-   <div className="add-task-heading"><h2 id="add-task-title">Add task</h2><button type="button" onClick={onClose} aria-label="Close"><X size={16}/></button></div>
+   <div className="add-task-heading"><div><span>Task planner</span><h2 id="add-task-title">Add a new task</h2><p>Set the owner, timeline, and delivery status.</p></div><button type="button" onClick={onClose} aria-label="Close"><X size={16}/></button></div>
    <form onSubmit={submit} className="add-task-form">
     <label>Task name *<input autoFocus value={draft.step} onChange={event=>setDraft({...draft,step:event.target.value})}/></label>
     <label>Phase *<select value={draft.phase} onChange={event=>setDraft({...draft,phase:event.target.value})}>{phases.map(phase=><option key={phase.id} value={phase.phase}>{phase.phase}</option>)}</select></label>
