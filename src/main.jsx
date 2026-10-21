@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Home, CheckSquare, CalendarDays, Users, GraduationCap, FileText, BarChart3, Settings, Search, Bell, ChevronRight, ChevronLeft, AlertTriangle, Flag, Circle, CheckCircle2, Clock3, LayoutGrid, List, Menu, RotateCcw, Save, X, Trash2, ClipboardList } from 'lucide-react';
 import bundledData from './data.json';
+import korunaLogo from './koruna-logo.svg';
 import './style.css';
 import './edit-access.css';
 import './overview.css';
@@ -342,7 +343,7 @@ function App(){
  if(!session)return <Login cloudMode={cloudConfigured} demoCredentials={demoCredentials} onSignIn={handleLogin} onRegister={()=>setAuthView('register')} onForgotPassword={()=>setAuthView('forgot-password')}/>;
  return <div className="app">
   <aside className={`sidebar ${menu?'open':''}`}>
-   <div className="brand"><div className="monogram">DEMO</div><div className="brandname">KORUNA &amp; CO</div></div>
+   <div className="brand"><img className="sidebar-logo" src={korunaLogo} alt="Koruna &amp; Co."/></div>
    <div className="nav">{nav.map(([label,Icon])=><button key={label} className={page===label?'active':''} onClick={()=>navTo(label)}><Icon size={17}/><span>{label}</span></button>)}</div>
    <div className="sidebar-foot"><div>AI Workforce<br/>Transformation</div><ChevronRight size={18}/></div>
   </aside>

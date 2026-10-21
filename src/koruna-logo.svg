@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1784 500" role="img" aria-labelledby="title">
+  <title id="title">Koruna &amp; Co.</title>
+  <g fill="#182342">
+    <path d="M0 0h109v224L343 0h77L212 229l244 271H336L109 256v244H0V0Z"/>
+    <path d="M476 4C491 1 506 0 522 0c84 0 159 39 195 99l-87 54c-24-38-65-61-110-61-15 0-30 2-44 6V4Zm0 398c14 4 29 6 44 6 46 0 87-23 111-61l87 53c-36 60-111 100-196 100-16 0-31-1-46-4v-94Z"/>
+  </g>
+  <g fill="#182342" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <text x="881" y="217" font-size="198" textLength="903" lengthAdjust="spacingAndGlyphs">KORUNA</text>
+    <text x="881" y="426" font-size="196" textLength="533" lengthAdjust="spacingAndGlyphs">&amp; CO.</text>
+  </g>
+</svg>
